@@ -5,10 +5,9 @@ from discord.ui import Button, View
 from datetime import datetime
 import json
 import os
-import ctypes
 
 
-
+owners = [1048245931008610354, 1048236247698640966]
 redirect_dms_to_channel = 1050399620892721192
 role_verified = 1048376186377609316
 guild = 1048256699607298129
@@ -19,6 +18,20 @@ config = json.load(open(configfile))
 token = config["token"]
 
 
+
+
+class Static:
+    def __init__(self) -> None:
+        pass
+
+    def is_owner(self, ctx: commands.Context):
+        if ctx.author.id in owners:
+            return True
+        else:
+            return False
+            
+
+func = Static()
 
 class Bot(commands.Bot):
     def __init__(self):
@@ -42,7 +55,9 @@ client = Bot()
 
 @client.event
 async def on_ready():
-    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="🔹 /help | $help 🔹"), status=discord.Status.do_not_disturb)
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/help | $help"), status=discord.Status.online)
+
+
 
 
 @client.event
@@ -77,46 +92,30 @@ async def on_message(msg: discord.Message):
 
 
 
-
-@client.hybrid_command(name="load_dll", with_app_command=True, description="ANY | Execute Extension File [.DLL or .SO]")
-async def load_dll(ctx: commands.Context, filename: str):
-
-    MyDLL = ctypes.CDLL(f"./assets/lib/{filename}")
-    # MyDLL.loader.restype = ctypes.c_char_p
-
-    await ctx.send(f"Out: ```{MyDLL.main()}```")
-
-    
-
-
-
-
-@client.hybrid_command(name="libs", with_app_command=True, description="ANY | Get all extensions (DLL's)")
-async def libs(ctx: commands.Context):
-    await ctx.send(f'`{os.listdir(f"{os.getcwd()}/assets/lib/")}`', ephemeral=True)
-
-
-
+@client.hybrid_command(name="report", with_app_command=True, description="How to report bugs or ask questions?")
+async def dm(ctx: commands.Context):
+    await ctx.send(f"Did you encounter an error?\nMaybe we can help you!\nJust type on my DM to report BUG!\nIf you have any questions you can ask too just DM me ({client.user})", ephemeral=True)
 
 
 @client.hybrid_command(name="dm", with_app_command=True, description="DEV | DM as bot")
 async def dm(ctx: commands.Context, userid: str, message: str):
+    if func.is_owner(ctx):
 
-    usr = client.get_user(int(userid))
+        usr = client.get_user(int(userid))
 
-    embed=discord.Embed(
-        title=f"**Message sent by {ctx.author.name}**", 
-        description=f"{message}", color=0xe2e9e6
-    )
-    embed.set_author(
-        name=f"{ctx.author.id}", 
-        icon_url=f"{ctx.author.avatar.url}"
-    )
-    (embed.set_thumbnail(url=f"{ctx.author.banner.url}")) if ctx.author.banner != None else None
-    embed.set_footer(text=f"{client.user} | {datetime.now()}", icon_url=f"{ctx.author.avatar.url}")
-    await usr.send(embed=embed)
+        embed=discord.Embed(
+            title=f"**Message sent by {ctx.author.name}**", 
+            description=f"{message}", color=0xe2e9e6
+        )
+        embed.set_author(
+            name=f"{ctx.author.id}", 
+            icon_url=f"{ctx.author.avatar.url}"
+        )
+        (embed.set_thumbnail(url=f"{ctx.author.banner.url}")) if ctx.author.banner != None else None
+        embed.set_footer(text=f"{client.user} | {datetime.now()}", icon_url=f"{ctx.author.avatar.url}")
+        await usr.send(embed=embed)
 
-    await ctx.send("Message Sent!", ephemeral=True)
+        await ctx.send("Message Sent!", ephemeral=True)
 
 
 
@@ -126,22 +125,23 @@ async def dm(ctx: commands.Context, userid: str, message: str):
 @client.hybrid_command(name="upload", with_app_command=True, description="DEV | Upload Object")
 @app_commands.guilds(discord.Object(id=guild))
 async def upload(ctx: commands.Context, file: discord.Attachment):
+    if func.is_owner(ctx):
+        await ctx.defer(ephemeral=True)
 
-    await ctx.defer(ephemeral=True)
+        attachment = file
+        src = await attachment.read()
+        with open(f"./assets/uploads/{attachment.filename}", mode="wb+") as fileuploadnet:
+            fileuploadnet.write(src)
+            fileuploadnet.close()
+        embed=discord.Embed(title="💾 File Uploaded 💾", color=0x00ff40)
+        embed.add_field(name="1️⃣ Filename", value=f"`{attachment.filename}`", inline=True)
+        embed.add_field(name="2️⃣ Size", value=f"`{attachment.size}`", inline=True)
+        embed.add_field(name="3️⃣ Attachment ID", value=f"`{attachment.id}`", inline=True)
+        embed.add_field(name="4️⃣ Saved To", value=f"`./assets/uploads/{attachment.filename}`", inline=True)
+        embed.add_field(name="5️⃣ URL", value=f"`{attachment.url}`", inline=True)
+        await ctx.author.send(embed=embed)
 
-    attachment = file
-    src = await attachment.read()
-    with open(f"./assets/uploads/{attachment.filename}", mode="wb+") as fileuploadnet:
-        fileuploadnet.write(src)
-        fileuploadnet.close()
-    embed=discord.Embed(title="💾 File Uploaded 💾", color=0x00ff40)
-    embed.add_field(name="1️⃣ Filename", value=f"`{attachment.filename}`", inline=True)
-    embed.add_field(name="2️⃣ Size", value=f"`{attachment.size}`", inline=True)
-    embed.add_field(name="3️⃣ Attachment ID", value=f"`{attachment.id}`", inline=True)
-    embed.add_field(name="4️⃣ Saved To", value=f"`./assets/uploads/{attachment.filename}`", inline=True)
-    await ctx.author.send(embed=embed)
-
-    await ctx.send(f"**Your file `{attachment.filename}` has been successfully uploaded.**", ephemeral=True)
+        await ctx.send(f"**Your file `{attachment.filename}` has been successfully uploaded.**", ephemeral=True)
 
 
 
@@ -151,20 +151,12 @@ async def upload(ctx: commands.Context, file: discord.Attachment):
 @client.hybrid_command(name="remove_file", with_app_command=True, description="DEV | Remove Object")
 @app_commands.guilds(discord.Object(id=guild))
 async def remove_file(ctx: commands.Context, file: str):
-    try:
-        os.remove(f"./assets/uploads/{file}")
-        await ctx.send(f"File {file} has been deleted.", ephemeral=True)
-    except:
-        await ctx.send(f"ERROR: {file} not exists.. [ FILES:  {os.listdir('./assets/uploads/')} ]", ephemeral=True)
-
-
-
-
-
-
-
-
-    
+    if func.is_owner(ctx):
+        try:
+            os.remove(f"./assets/uploads/{file}")
+            await ctx.send(f"File {file} has been deleted.", ephemeral=True)
+        except:
+            await ctx.send(f"ERROR: {file} not exists.. [ FILES:  {os.listdir('./assets/uploads/')} ]", ephemeral=True)
 
 
 
@@ -222,8 +214,6 @@ async def verify(ctx: commands.Context):
     embed.set_footer(text=f"{client.user} | {datetime.now()}")
 
     await ctx.send(embed=embed, view=view, ephemeral=True)
-
-
 
 
 
